@@ -10,6 +10,9 @@ export function effect(fn, options?) {
 export let activeEffect
 
 class ReactiveEffect {
+  deps = []
+  _depLength = 0
+  _trackId = 0
   public active = true
   // fn为用户编写的函数
   // 如果fn中依赖的数据发生变化后，就重新调用 run()
@@ -25,6 +28,22 @@ class ReactiveEffect {
       return this.fn()
     } finally {
       activeEffect = lastEffect
+    }
+  }
+  stop() {
+    this.active = false
+  }
+}
+
+export function trackEffect(effect, dep) {
+  dep.set(effect, effect._trackId)
+  effect.deps[effect._depLength++] = dep
+}
+
+export function triggerEffect(dep) {
+  for (const effect of dep.keys()) {
+    if (effect.scheduler) {
+      effect.scheduler()
     }
   }
 }
