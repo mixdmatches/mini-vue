@@ -16,6 +16,6 @@ export default tseslint.config(
     }
   },
   {
-    ignores: ['**/dist/', '**/temp/', '**/coverage/']
+    ignores: ['**/dist/', '**/temp/', '**/coverage/', 'pnpm-lock.yaml']
   }
 )
