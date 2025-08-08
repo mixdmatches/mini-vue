@@ -9,6 +9,20 @@ export function effect(fn, options?) {
 
 export let activeEffect
 
+function preCleanEffect(effect) {
+  effect._depLength = 0
+  effect._trackId++
+}
+
+function postCleanEffect(effect) {
+  if (effect.deps.length > effect._depLength) {
+    for (let i = effect._depLength; i < effect.deps.length; i++) {
+      cleanDepEffect(effect.deps[i], effect)
+    }
+    effect.deps.length = effect._depLength
+  }
+}
+
 class ReactiveEffect {
   deps = []
   _depLength = 0
@@ -25,9 +39,11 @@ class ReactiveEffect {
     let lastEffect = activeEffect
     try {
       activeEffect = this
+      preCleanEffect(this)
       return this.fn()
     } finally {
       activeEffect = lastEffect
+      postCleanEffect(this)
     }
   }
   stop() {
@@ -35,9 +51,27 @@ class ReactiveEffect {
   }
 }
 
+function cleanDepEffect(dep, effect) {
+  dep.delete(effect)
+  if (dep.size == 0) {
+    dep.clearup()
+  }
+}
+
 export function trackEffect(effect, dep) {
-  dep.set(effect, effect._trackId)
-  effect.deps[effect._depLength++] = dep
+  if (dep.get(effect) !== effect._trackId) {
+    dep.set(effect, effect._trackId)
+
+    let oldDep = effect.deps[effect._depLength]
+    if (oldDep !== dep) {
+      if (oldDep) {
+        cleanDepEffect(oldDep, effect)
+      }
+      effect.deps[effect._depLength++] = dep
+    } else {
+      effect._depLength++
+    }
+  }
 }
 
 export function triggerEffect(dep) {
