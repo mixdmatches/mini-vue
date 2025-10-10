@@ -1,7 +1,7 @@
 import { activeEffect, trackEffect, triggerEffect } from '@mini-vue/reactivity'
 
 // 创建一个收集器
-const createDep = (clearup, key) => {
+export const createDep = (clearup, key) => {
   const dep = new Map() as any
   dep.clearup = clearup
   dep.name = key

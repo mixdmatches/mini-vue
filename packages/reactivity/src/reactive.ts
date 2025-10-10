@@ -17,5 +17,10 @@ function createReactiveObject(target) {
 }
 
 export function reactive(target) {
+  debugger
   return createReactiveObject(target)
+}
+
+export function toReactive(value) {
+  return isObject(value) ? reactive(value) : value
 }
