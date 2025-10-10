@@ -1,3 +1,5 @@
+import { DirtyLevels } from './constants'
+
 export function effect(fn, options?) {
   // 创建一个effect 只要依赖的属性变化就执行回调
   const _effect = new ReactiveEffect(fn, () => {
@@ -21,6 +23,13 @@ function preCleanEffect(effect) {
   effect._trackId++
 }
 
+function cleanDepEffect(dep, effect) {
+  dep.delete(effect)
+  if (dep.size == 0) {
+    dep.clearup()
+  }
+}
+
 function postCleanEffect(effect) {
   if (effect.deps.length > effect._depLength) {
     for (let i = effect._depLength; i < effect.deps.length; i++) {
@@ -30,19 +39,29 @@ function postCleanEffect(effect) {
   }
 }
 
-class ReactiveEffect {
+export class ReactiveEffect {
   deps = []
   _depLength = 0
   _trackId = 0
   public active = true // 默认创建的effect是响应式
   _running = 0 //是否正在执行
+  _dirtyLevel = DirtyLevels.Dirty // 默认是脏值
   // fn为用户编写的函数
   // 如果fn中依赖的数据发生变化后，就重新调用 run()
   constructor(
     public fn,
     public scheduler
   ) {}
+
+  public get dirty() {
+    return this._dirtyLevel === DirtyLevels.Dirty
+  }
+  public set dirty(value) {
+    this._dirtyLevel = value ? DirtyLevels.Dirty : DirtyLevels.NoDirty
+  }
+
   run() {
+    this._dirtyLevel = DirtyLevels.NoDirty
     if (!this.active) return this.fn()
     let lastEffect = activeEffect
     try {
@@ -58,13 +77,6 @@ class ReactiveEffect {
   }
   stop() {
     this.active = false
-  }
-}
-
-function cleanDepEffect(dep, effect) {
-  dep.delete(effect)
-  if (dep.size == 0) {
-    dep.clearup()
   }
 }
 
@@ -86,6 +98,10 @@ export function trackEffect(effect, dep) {
 
 export function triggerEffect(dep) {
   for (const effect of dep.keys()) {
+    // 当前这个值不脏的话就触发更新将值变为脏值
+    if (effect._dirtyLevel < DirtyLevels.Dirty) {
+      effect._dirtyLevel = DirtyLevels.Dirty
+    }
     if (!effect._running) {
       if (effect.scheduler) {
         // 不是正在执行才能执行

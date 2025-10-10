@@ -1,5 +1,6 @@
 import { isObject } from '@mini-vue/shared'
-import { ReactiveFlags, mutableHandlers } from './baseHandler'
+import { mutableHandlers } from './baseHandler'
+import { ReactiveFlags } from './constants'
 const reactiveMap = new Map()
 
 function createReactiveObject(target) {
@@ -17,7 +18,6 @@ function createReactiveObject(target) {
 }
 
 export function reactive(target) {
-  debugger
   return createReactiveObject(target)
 }
 
