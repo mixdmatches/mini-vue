@@ -32,5 +32,8 @@
     "*.{ts,tsx,js}": [
       "eslint"
     ]
+  },
+  "dependencies": {
+    "vue": "^3.5.22"
   }
 }
