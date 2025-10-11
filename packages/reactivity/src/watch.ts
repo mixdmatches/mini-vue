@@ -68,4 +68,10 @@ function doWatch(source, callback, options) {
   } else {
     effect.run()
   }
+
+  const unWatch = () => {
+    effect.stop()
+  }
+
+  return unWatch
 }
