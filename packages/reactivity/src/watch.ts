@@ -47,10 +47,21 @@ function doWatch(source, callback, options) {
   }
 
   let oldValue
+
+  let clean
+  const onCleanup = fn => {
+    clean = () => {
+      fn()
+      clean = undefined
+    }
+  }
   const job = () => {
     if (callback) {
       const newValue = effect.run()
-      callback(newValue, oldValue)
+      if (clean) {
+        clean()
+      }
+      callback(newValue, oldValue, onCleanup)
       oldValue = newValue
     } else {
       effect.run()
