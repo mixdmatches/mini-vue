@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.js reactivity -f esm",
+    "dev": "node scripts/dev.js runtime-dom -f esm",
     "lint": "eslint --ext .js,.ts .",
     "lint:fix": "eslint --fix --ext .js,.ts .",
     "prettier": "prettier --write .",
@@ -14,7 +14,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.13.0",
+  "packageManager": "pnpm@10.18.2",
   "devDependencies": {
     "@eslint/js": "^9.31.0",
     "esbuild": "^0.25.8",

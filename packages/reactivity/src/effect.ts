@@ -11,7 +11,7 @@ export function effect(fn, options?) {
     Object.assign(_effect, options) // 用用户传递的选项覆盖默认选项
   }
 
-  const runner = _effect.run.bind(_effect)
+  const runner: any = _effect.run.bind(_effect)
   runner.effect = _effect
   return runner // 外界可以自己重新run
 }
