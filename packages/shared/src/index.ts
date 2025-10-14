@@ -15,3 +15,5 @@ export const isReactive = (value: unknown) => {
 export const isRef = (value: unknown) => {
   return !!(value && value[ReactiveFlags.IS_REF])
 }
+
+export * from './shapeFlag'
