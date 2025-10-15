@@ -16,4 +16,21 @@ export const isRef = (value: unknown) => {
   return !!(value && value[ReactiveFlags.IS_REF])
 }
 
+export const isString = (value: unknown) => {
+  return typeof value === 'string'
+}
+
+export const isVNode = (value: unknown) => {
+  return (
+    value &&
+    typeof value === 'object' &&
+    '_v_isVNode' in value &&
+    value._v_isVNode
+  )
+}
+
+export function isSameVNode(n1, n2) {
+  return n1.type === n2.type && n1.key === n2.key
+}
+
 export * from './shapeFlag'
