@@ -1,5 +1,11 @@
+import { VNode } from '@mini-vue/runtime-core'
 import { isSameVNode, ShapeFlags } from '@mini-vue/shared'
 
+/**
+ * 创建一个渲染器
+ * @param renderOptions 渲染器选项
+ * @returns render
+ */
 export function createRenderer(renderOptions) {
   const {
     insert: hostInsert,
@@ -62,8 +68,42 @@ export function createRenderer(renderOptions) {
     }
   }
 
+  const patchKeyedChildren = (oldVNodeChildren1, newVNodeChildren2, el) => {
+    let i = 0
+    let oldLastIndex = oldVNodeChildren1.length - 1
+    let newLastIndex = newVNodeChildren2.length - 1
+
+    // [a,b,c] [a,b,d,c] 的情况，从头开始比
+    while (i <= oldLastIndex && i <= newLastIndex) {
+      const oldChild = oldVNodeChildren1[i]
+      const newChild = newVNodeChildren2[i]
+
+      if (isSameVNode(oldChild, newChild)) {
+        patch(oldChild, newChild, el)
+      } else {
+        break
+      }
+      i++
+    }
+    // [d,b,c,a] [d,c,a] 的情况，从尾部开始比
+    while (i <= oldLastIndex && i <= newLastIndex) {
+      const oldChild = oldVNodeChildren1[i]
+      const newChild = newVNodeChildren2[i]
+
+      if (isSameVNode(oldChild, newChild)) {
+        patch(oldChild, newChild, el)
+      } else {
+        break
+      }
+      oldLastIndex--
+      newLastIndex--
+    }
+    console.log(i, oldLastIndex, newLastIndex)
+    // 处理增加和删除的情况
+  }
+
   const patchChildren = (n1, n2, el) => {
-    debugger
+    // text array null
     const c1 = n1.children
     const c2 = n2.children
 
@@ -72,11 +112,10 @@ export function createRenderer(renderOptions) {
 
     // 1.新的是文本，老的是数组移除老的;
     // 2.新的是文本，老的也是文本，内容不相同替换
-    // 3.老的是数组，，新的是数组，注量 diff 算法
+    // 3.老的是数组，，新的是数组，全量 diff 算法
     // 4.老的是数组,新的不是数组，移除老的子节点
     // 5.老的是文本，新的是空
     // 6.老的是文本，新的是数组
-
     if (newShapeFlag & ShapeFlags.TEXT_CHILDREN) {
       if (oldShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         unmountChild(c1)
@@ -89,6 +128,7 @@ export function createRenderer(renderOptions) {
       if (oldShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         if (newShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
           // 全量diff算法，两个数组对比
+          patchKeyedChildren(c1, c2, el)
         } else {
           unmountChild(c1)
         }
@@ -103,6 +143,12 @@ export function createRenderer(renderOptions) {
     }
   }
 
+  /**
+   *
+   * @param n1 oldVNode
+   * @param n2 newVNode
+   * @param container 父元素
+   */
   const patchElement = (n1, n2, container) => {
     const el = (n2.el = n1.el)
 
@@ -113,7 +159,12 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, container)
   }
 
-  // 渲染，更新
+  /**
+   * 更新，渲染
+   * @param n1 oldVNode
+   * @param n2 newVNode
+   * @param container 父元素
+   */
   const patch = (n1, n2, container) => {
     if (n1 === n2) return
 
@@ -126,16 +177,19 @@ export function createRenderer(renderOptions) {
     processElement(n1, n2, container)
   }
 
-  const unmount = vNode => {
+  /**
+   * 移除该节点
+   * @param vNode 虚拟节点
+   */
+  const unmount = (vNode: VNode) => {
     hostRemove(vNode.el)
   }
 
   // 多次调用进行虚拟节点的比较
-  const render = (vNode, container) => {
+  const render = (vNode: VNode, container: Element & { _vNode: VNode }) => {
     if (vNode === null) {
       // 移除容器中的dom元素
       if (container._vNode) {
-        console.log(container._vNode)
         unmount(vNode)
       }
     }

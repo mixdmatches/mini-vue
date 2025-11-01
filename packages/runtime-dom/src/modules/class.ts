@@ -1,4 +1,4 @@
-export function patchClass(el, value) {
+export function patchClass(el: Element, value: string) {
   if (value == null) {
     el.removeAttribute('class')
   } else {

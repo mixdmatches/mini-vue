@@ -1,6 +1,13 @@
 import { isObject, isVNode } from '@mini-vue/shared'
 import { createVNode } from './createVNode'
 
+/**
+ *
+ * @param type 节点类型 h1,a,p
+ * @param propsOrChildren 属性或者子节点
+ * @param children 子节点
+ * @returns vNode虚拟节点
+ */
 export function h(type, propsOrChildren?, children?) {
   let length = arguments.length
 

@@ -4,7 +4,14 @@ import { patchClass } from './modules/class'
 import { patchEvent } from './modules/events'
 import { patchAttr } from './modules/attrs'
 
-export default function patchProp(el, key, preValue, nextValue) {
+/**
+ * 更新属性style,class等
+ * @param el 元素
+ * @param key 唯一标识
+ * @param preValue 旧值
+ * @param nextValue 新值
+ */
+export default function patchProp(el, key: string, preValue, nextValue) {
   if (key === 'class') {
     return patchClass(el, nextValue)
   } else if (key === 'style') {
