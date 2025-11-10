@@ -25,7 +25,7 @@ export function createRenderer(renderOptions) {
     }
   }
 
-  const mountElement = (vNode, container) => {
+  const mountElement = (vNode, container, anchor) => {
     const { type, children, props, shapeFlag } = vNode
     let el = (vNode.el = hostCreateElement(type))
     if (props) {
@@ -38,7 +38,7 @@ export function createRenderer(renderOptions) {
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       mountChildren(children, el)
     }
-    hostInsert(el, container)
+    hostInsert(el, container, anchor)
   }
 
   const unmountChild = children => {
@@ -48,10 +48,10 @@ export function createRenderer(renderOptions) {
     }
   }
 
-  const processElement = (n1, n2, container) => {
+  const processElement = (n1, n2, container, anchor) => {
     if (n1 === null) {
       // 初始化操作
-      mountElement(n2, container)
+      mountElement(n2, container, anchor)
     } else {
       patchElement(n1, n2, container)
     }
@@ -72,7 +72,6 @@ export function createRenderer(renderOptions) {
     let i = 0
     let oldLastIndex = oldVNodeChildren1.length - 1
     let newLastIndex = newVNodeChildren2.length - 1
-
     // [a,b,c] [a,b,d,c] 的情况，从头开始比
     while (i <= oldLastIndex && i <= newLastIndex) {
       const oldChild = oldVNodeChildren1[i]
@@ -87,8 +86,8 @@ export function createRenderer(renderOptions) {
     }
     // [d,b,c,a] [d,c,a] 的情况，从尾部开始比
     while (i <= oldLastIndex && i <= newLastIndex) {
-      const oldChild = oldVNodeChildren1[i]
-      const newChild = newVNodeChildren2[i]
+      const oldChild = oldVNodeChildren1[oldLastIndex]
+      const newChild = newVNodeChildren2[newLastIndex]
 
       if (isSameVNode(oldChild, newChild)) {
         patch(oldChild, newChild, el)
@@ -98,8 +97,6 @@ export function createRenderer(renderOptions) {
       oldLastIndex--
       newLastIndex--
     }
-    console.log(i, oldLastIndex, newLastIndex)
-    // 处理增加和删除的情况
   }
 
   const patchChildren = (n1, n2, el) => {
@@ -165,7 +162,7 @@ export function createRenderer(renderOptions) {
    * @param n2 newVNode
    * @param container 父元素
    */
-  const patch = (n1, n2, container) => {
+  const patch = (n1, n2, container, anchor = null) => {
     if (n1 === n2) return
 
     if (n1 && !isSameVNode(n1, n2)) {
@@ -174,7 +171,7 @@ export function createRenderer(renderOptions) {
     }
 
     // 对元素处理
-    processElement(n1, n2, container)
+    processElement(n1, n2, container, anchor)
   }
 
   /**
