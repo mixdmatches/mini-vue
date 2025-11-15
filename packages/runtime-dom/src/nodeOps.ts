@@ -1,7 +1,10 @@
 // 对节点元素的增删改查
 export const nodeOps = {
-  insert: (el: Element, parent: Element, anchor: Element) =>
-    parent.insertBefore(el, anchor || null),
+  insert: (el: Element, parent: Element, anchor: Element) => {
+    console.log(el, parent, anchor)
+
+    parent.insertBefore(el, anchor || null)
+  },
   remove(el: Element) {
     const parent = el.parentNode
     parent && parent.removeChild(el)

@@ -97,6 +97,71 @@ export function createRenderer(renderOptions) {
       oldLastIndex--
       newLastIndex--
     }
+
+    // 处理增加和删除的情况 [a,b,c] [a,b] | [c,a,b] [a,b]
+
+    // a b
+    // a b c -> i = 2, old = 1, new = 2 i > old && i <= new
+    // a b
+    // c a b -> i = 0, old = -1, new = 0 i > old && i <= new
+    if (i > oldLastIndex) {
+      if (i <= newLastIndex) {
+        // 有插入的部分
+        let nextPos = newLastIndex + 1
+        let anchor = newVNodeChildren2[nextPos]?.el
+
+        while (i <= newLastIndex) {
+          patch(null, newVNodeChildren2[i], el, anchor)
+          i++
+        }
+      }
+    } else if (i > newLastIndex) {
+      // a,b,c
+      // a,b -> i = 2, old = 2 new = 1  i>new && i<=old
+      // c,a,b
+      // a,b  -> i = 0, old = 1 new = -1
+      if (i <= oldLastIndex) {
+        while (i <= oldLastIndex) {
+          unmount(oldVNodeChildren1[i])
+          i++
+        }
+      }
+    } else {
+      // 以上确认不变化的节点，并对插入和移除做了处理
+      // 后面就是特殊的对比方式了
+      let s1 = i
+      let s2 = i
+
+      const keyToNewIndexMap = new Map() // 做一个映射表用于快速查找
+      for (let i = s2; i <= newLastIndex; i++) {
+        const vNode = newVNodeChildren2[i]
+        keyToNewIndexMap.set(vNode.key, i)
+      }
+      for (let i = s1; i <= oldLastIndex; i++) {
+        const vNode = oldVNodeChildren1[i]
+        const newIndex = keyToNewIndexMap.get(vNode.key)
+
+        if (newIndex == undefined) {
+          unmount(vNode)
+        } else {
+          patch(vNode, newVNodeChildren2[newIndex], el)
+        }
+      }
+
+      let toBePatched = newLastIndex - s2 + 1 // 倒序插入的个数
+
+      for (let i = toBePatched - 1; i >= 0; i--) {
+        let newIndex = s2 + i
+        let anchor = newVNodeChildren2[newIndex + 1]?.el
+        let vNode = newVNodeChildren2[newIndex]
+        if (!vNode.el) {
+          // 在新列表中新增的元素
+          patch(null, vNode, el, anchor)
+        } else {
+          hostInsert(vNode, el, el, anchor) // 接着倒序插入
+        }
+      }
+    }
   }
 
   const patchChildren = (n1, n2, el) => {
@@ -153,7 +218,7 @@ export function createRenderer(renderOptions) {
     const newProps = n2.props
 
     patchProps(el, oldProps, newProps)
-    patchChildren(n1, n2, container)
+    patchChildren(n1, n2, el)
   }
 
   /**
