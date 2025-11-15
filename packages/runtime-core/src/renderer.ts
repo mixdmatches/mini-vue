@@ -1,5 +1,6 @@
-import { VNode } from '@mini-vue/runtime-core'
 import { isSameVNode, ShapeFlags } from '@mini-vue/shared'
+import { Fragment, Text } from '@mini-vue/runtime-dom'
+import getSequence from 'packages/runtime-core/src/seq'
 
 /**
  * 创建一个渲染器
@@ -133,6 +134,9 @@ export function createRenderer(renderOptions) {
       let s2 = i
 
       const keyToNewIndexMap = new Map() // 做一个映射表用于快速查找
+      let toBePatched = newLastIndex - s2 + 1 // 倒序插入的个数
+      let newIndexToOldMapIndex = new Array(toBePatched).fill(0)
+
       for (let i = s2; i <= newLastIndex; i++) {
         const vNode = newVNodeChildren2[i]
         keyToNewIndexMap.set(vNode.key, i)
@@ -144,11 +148,13 @@ export function createRenderer(renderOptions) {
         if (newIndex == undefined) {
           unmount(vNode)
         } else {
+          // i可能为0，避免歧义
+          newIndexToOldMapIndex[newIndex - s2] = i + i
           patch(vNode, newVNodeChildren2[newIndex], el)
         }
       }
-
-      let toBePatched = newLastIndex - s2 + 1 // 倒序插入的个数
+      let increasingSeq = getSequence(newIndexToOldMapIndex)
+      let j = increasingSeq.length - 1
 
       for (let i = toBePatched - 1; i >= 0; i--) {
         let newIndex = s2 + i
@@ -158,7 +164,11 @@ export function createRenderer(renderOptions) {
           // 在新列表中新增的元素
           patch(null, vNode, el, anchor)
         } else {
-          hostInsert(vNode, el, el, anchor) // 接着倒序插入
+          if (i == increasingSeq[j]) {
+            j--
+          } else {
+            hostInsert(vNode, el, el, anchor) // 接着倒序插入
+          }
         }
       }
     }
@@ -221,6 +231,24 @@ export function createRenderer(renderOptions) {
     patchChildren(n1, n2, el)
   }
 
+  const processText = (n1, n2, container) => {
+    if (n1 == null) {
+      hostInsert((n2.el = hostCreateText(n2.children)), container)
+    } else {
+      const el = (n2.el = n1.el)
+      if (n1.children !== n2.children) {
+        hostSetText(el, n2.children)
+      }
+    }
+  }
+
+  const processFragment = (n1, n2, container) => {
+    if (n1 == null) {
+      mountChildren(n2.children, container)
+    } else {
+      patchChildren(n1, n2, container)
+    }
+  }
   /**
    * 更新，渲染
    * @param n1 oldVNode
@@ -235,28 +263,44 @@ export function createRenderer(renderOptions) {
       n1 = null
     }
 
-    // 对元素处理
-    processElement(n1, n2, container, anchor)
+    const { type } = n2
+    switch (type) {
+      case Text:
+        // 对文本节点处理
+        processText(n1, n2, container)
+        break
+      case Fragment:
+        processFragment(n1, n2, container)
+        break
+      default:
+        // 对元素处理
+        processElement(n1, n2, container, anchor)
+    }
   }
 
   /**
    * 移除该节点
    * @param vNode 虚拟节点
    */
-  const unmount = (vNode: VNode) => {
-    hostRemove(vNode.el)
+  const unmount = vNode => {
+    if (vNode.type === Fragment) {
+      unmountChild(vNode.children)
+    } else {
+      hostRemove(vNode.el)
+    }
   }
 
   // 多次调用进行虚拟节点的比较
-  const render = (vNode: VNode, container: Element & { _vNode: VNode }) => {
+  const render = (vNode, container: Element & { _vNode }) => {
     if (vNode === null) {
       // 移除容器中的dom元素
       if (container._vNode) {
-        unmount(vNode)
+        unmount(container._vNode)
       }
+    } else {
+      patch(container._vNode || null, vNode, container)
+      container._vNode = vNode
     }
-    patch(container._vNode || null, vNode, container)
-    container._vNode = vNode
   }
 
   return {

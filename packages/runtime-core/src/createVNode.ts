@@ -1,14 +1,7 @@
 import { isString, ShapeFlags } from '@mini-vue/shared'
 
-export type VNode = {
-  _v_isVNode: Boolean
-  type: String | VNode
-  props: Object
-  children: String | VNode
-  key: String | Number
-  el: null | Element
-  shapeFlag: number
-}
+export const Text = Symbol('Text')
+export const Fragment = Symbol('Fragment')
 /**
  * 创建一个VNode虚拟节点
  * @param type 节点类型/ h1 ,p
@@ -16,9 +9,9 @@ export type VNode = {
  * @param children 节点的子节点
  * @returns 虚拟节点
  */
-export function createVNode(type, props, children?): VNode {
+export function createVNode(type, props, children?) {
   const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0
-  const vNode: VNode = {
+  const vNode = {
     _v_isVNode: true,
     type,
     props,
