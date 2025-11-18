@@ -1,6 +1,7 @@
 import { isSameVNode, ShapeFlags } from '@mini-vue/shared'
-import { Fragment, Text } from '@mini-vue/runtime-dom'
+import { Fragment, reactive, ReactiveEffect, Text } from '@mini-vue/runtime-dom'
 import getSequence from 'packages/runtime-core/src/seq'
+import { queueJob } from 'packages/runtime-core/src/scheduler'
 
 /**
  * 创建一个渲染器
@@ -249,6 +250,52 @@ export function createRenderer(renderOptions) {
       patchChildren(n1, n2, container)
     }
   }
+
+  /**
+   * 挂载组件
+   * @param n1
+   * @param n2
+   * @param container
+   * @param anchor
+   */
+  const mountComponent = (n2, container, anchor) => {
+    const { data = () => {}, render } = n2.type
+    const state = reactive(data())
+
+    const instance = {
+      state, // 状态
+      vNode: n2, // 组件的虚拟节点
+      subTree: null, // 子树
+      isMounted: false, // 是否挂在完成
+      update: null // 组件更新的函数
+    }
+
+    const componentUpdateFn = () => {
+      // 区分组件是第一次还是之后的
+      if (!instance.isMounted) {
+        const subTree = render.call(state, state)
+        patch(null, subTree, container, anchor)
+        instance.isMounted = true
+        instance.subTree = subTree
+      } else {
+        // 基于状态的组件更新
+        const subTree = render.call(state, state)
+        patch(instance.subTree, subTree, container, anchor)
+        instance.subTree = subTree
+      }
+    }
+    const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update))
+    const update = (instance.update = () => effect.run())
+    update()
+  }
+
+  const processComponent = (n1, n2, container, anchor) => {
+    if (n1 === null) {
+      mountComponent(n2, container, anchor)
+    } else {
+      // 组件更新
+    }
+  }
   /**
    * 更新，渲染
    * @param n1 oldVNode
@@ -263,7 +310,7 @@ export function createRenderer(renderOptions) {
       n1 = null
     }
 
-    const { type } = n2
+    const { type, shapeFlag } = n2
     switch (type) {
       case Text:
         // 对文本节点处理
@@ -273,8 +320,12 @@ export function createRenderer(renderOptions) {
         processFragment(n1, n2, container)
         break
       default:
-        // 对元素处理
-        processElement(n1, n2, container, anchor)
+        if (shapeFlag & ShapeFlags.ELEMENT) {
+          // 对元素处理
+          processElement(n1, n2, container, anchor)
+        } else if (shapeFlag & ShapeFlags.COMPONENT) {
+          processComponent(n1, n2, container, anchor)
+        }
     }
   }
 

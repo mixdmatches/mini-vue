@@ -1,4 +1,4 @@
-import { isString, ShapeFlags } from '@mini-vue/shared'
+import { isObject, isString, ShapeFlags } from '@mini-vue/shared'
 
 export const Text = Symbol('Text')
 export const Fragment = Symbol('Fragment')
@@ -10,7 +10,11 @@ export const Fragment = Symbol('Fragment')
  * @returns 虚拟节点
  */
 export function createVNode(type, props, children?) {
-  const shapeFlag = isString(type) ? ShapeFlags.ELEMENT : 0
+  const shapeFlag = isString(type)
+    ? ShapeFlags.ELEMENT
+    : isObject(type)
+      ? ShapeFlags.STATEFUL_COMPONENT
+      : 0
   const vNode = {
     _v_isVNode: true,
     type,
