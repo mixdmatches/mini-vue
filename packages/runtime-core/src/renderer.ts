@@ -1,7 +1,11 @@
-import { isSameVNode, ShapeFlags } from '@mini-vue/shared'
+import { hasOwn, isSameVNode, ShapeFlags } from '@mini-vue/shared'
 import { Fragment, reactive, ReactiveEffect, Text } from '@mini-vue/runtime-dom'
 import getSequence from 'packages/runtime-core/src/seq'
 import { queueJob } from 'packages/runtime-core/src/scheduler'
+import {
+  createComponentInstance,
+  setupComponent
+} from 'packages/runtime-core/src/component'
 
 /**
  * 创建一个渲染器
@@ -217,7 +221,7 @@ export function createRenderer(renderOptions) {
   }
 
   /**
-   *
+   * 更新元素
    * @param n1 oldVNode
    * @param n2 newVNode
    * @param container 父元素
@@ -252,34 +256,23 @@ export function createRenderer(renderOptions) {
   }
 
   /**
-   * 挂载组件
-   * @param n1
-   * @param n2
+   * 设置组件的渲染副函数
+   * @param instance
    * @param container
    * @param anchor
    */
-  const mountComponent = (n2, container, anchor) => {
-    const { data = () => {}, render } = n2.type
-    const state = reactive(data())
-
-    const instance = {
-      state, // 状态
-      vNode: n2, // 组件的虚拟节点
-      subTree: null, // 子树
-      isMounted: false, // 是否挂在完成
-      update: null // 组件更新的函数
-    }
-
+  const setupRenderEffect = (instance, container, anchor) => {
+    const { render } = instance
     const componentUpdateFn = () => {
       // 区分组件是第一次还是之后的
       if (!instance.isMounted) {
-        const subTree = render.call(state, state)
+        const subTree = render.call(instance.proxy, instance.proxy)
         patch(null, subTree, container, anchor)
         instance.isMounted = true
         instance.subTree = subTree
       } else {
         // 基于状态的组件更新
-        const subTree = render.call(state, state)
+        const subTree = render.call(instance.proxy, instance.proxy)
         patch(instance.subTree, subTree, container, anchor)
         instance.subTree = subTree
       }
@@ -287,6 +280,22 @@ export function createRenderer(renderOptions) {
     const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update))
     const update = (instance.update = () => effect.run())
     update()
+  }
+
+  /**
+   * 挂载组件
+   * @param n1
+   * @param n2
+   * @param container
+   * @param anchor
+   */
+  const mountComponent = (vNode, container, anchor) => {
+    // 创建组件实例
+    const instance = (vNode.component = createComponentInstance(vNode))
+    // 给实例属性赋值
+    setupComponent(instance)
+    // 创建一个effect
+    setupRenderEffect(instance, container, anchor)
   }
 
   const processComponent = (n1, n2, container, anchor) => {

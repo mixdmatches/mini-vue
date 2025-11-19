@@ -33,4 +33,7 @@ export function isSameVNode(n1, n2) {
   return n1.type === n2.type && n1.key === n2.key
 }
 
+const hasOwnProperty = Object.prototype.hasOwnProperty
+
+export const hasOwn = (value, key) => hasOwnProperty.call(value, key)
 export * from './shapeFlag'
