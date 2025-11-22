@@ -28,6 +28,8 @@ export function createVNode(type, props, children?) {
     // h('h1',[h('a','链接1'),h('a','链接2')])
     if (Array.isArray(children)) {
       vNode.shapeFlag |= ShapeFlags.ARRAY_CHILDREN
+    } else if (isObject(children)) {
+      vNode.shapeFlag |= ShapeFlags.SLOTS_CHILDREN
     } else {
       // h1('h1','大标题')
       children = String(children)

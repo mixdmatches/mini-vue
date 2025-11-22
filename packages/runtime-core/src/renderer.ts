@@ -415,6 +415,8 @@ export function createRenderer(renderOptions) {
   const unmount = vNode => {
     if (vNode.type === Fragment) {
       unmountChild(vNode.children)
+    } else if (vNode.shapeFlag & ShapeFlags.COMPONENT) {
+      unmount(vNode.component.subTree)
     } else {
       hostRemove(vNode.el)
     }

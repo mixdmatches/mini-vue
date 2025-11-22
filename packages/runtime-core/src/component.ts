@@ -1,5 +1,5 @@
 import { proxyRefs, reactive } from '@mini-vue/runtime-dom'
-import { hasOwn, isFunction } from '@mini-vue/shared'
+import { hasOwn, isFunction, ShapeFlags } from '@mini-vue/shared'
 
 export function createComponentInstance(vNode) {
   const instance = {
@@ -13,7 +13,9 @@ export function createComponentInstance(vNode) {
     propsOptions: vNode.type.props, // 用户声明的哪些属性是组件属性
     component: null,
     proxy: {}, // 用来代理props attrs data
-    setupState: {}
+    setupState: {},
+    slots: {},
+    expose: {}
   }
   return instance
 }
@@ -42,7 +44,8 @@ const initProps = (instance, rawProps) => {
 }
 
 const publicProperty = {
-  $attrs: instance => instance.attrs
+  $attrs: instance => instance.attrs,
+  $slots: instance => instance.slots
 }
 
 const handler = {
@@ -76,11 +79,20 @@ const handler = {
   }
 }
 
+export function initSlots(instance, children) {
+  if (instance.vNode.shapeFlag & ShapeFlags.SLOTS_CHILDREN) {
+    instance.slots = children
+  } else {
+    instance.slots = {}
+  }
+}
+
 export function setupComponent(instance) {
   const { vNode } = instance
 
   // 赋值属性
   initProps(instance, vNode.props)
+  initSlots(instance, vNode.children)
 
   // 赋值代理对象
   instance.proxy = new Proxy(instance, handler)
@@ -88,7 +100,34 @@ export function setupComponent(instance) {
   const { data = () => {}, render, setup } = vNode.type
 
   if (setup) {
-    const setupContext = {}
+    const setupContext = {
+      slots: instance.slots,
+      attrs: instance.attrs,
+      expose(value) {
+        instance.expose = value
+      },
+      emit(event, ...payload) {
+        // 正确转换事件名格式，例如：'myEvent' -> 'onMyEvent'
+        const eventName = `on${event.charAt(0).toUpperCase() + event.slice(1)}`
+        console.log(instance)
+
+        // 先从props中查找事件处理函数
+        let handler = instance.props[eventName]
+
+        // 如果props中没有，则从attrs中查找
+        if (!handler) {
+          handler = instance.attrs[eventName]
+        }
+
+        if (handler) {
+          handler(...payload)
+        } else {
+          console.warn(
+            `Event handler for ${eventName} not found in props or attrs`
+          )
+        }
+      }
+    }
     const setupResult = setup(instance.props, setupContext)
 
     if (isFunction(setupResult)) {
