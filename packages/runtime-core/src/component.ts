@@ -1,4 +1,4 @@
-import { reactive } from '@mini-vue/runtime-dom'
+import { proxyRefs, reactive } from '@mini-vue/runtime-dom'
 import { hasOwn, isFunction } from '@mini-vue/shared'
 
 export function createComponentInstance(vNode) {
@@ -12,7 +12,8 @@ export function createComponentInstance(vNode) {
     attrs: {},
     propsOptions: vNode.type.props, // 用户声明的哪些属性是组件属性
     component: null,
-    proxy: {} // 用来代理props attrs data
+    proxy: {}, // 用来代理props attrs data
+    setupState: {}
   }
   return instance
 }
@@ -46,12 +47,14 @@ const publicProperty = {
 
 const handler = {
   get(target, key) {
-    const { data, props } = target
+    const { data, props, setupState } = target
     // proxy.name -> data.name
     if (data && hasOwn(data, key)) {
       return data[key]
     } else if (props && hasOwn(props, key)) {
       return props[key]
+    } else if (setupState && hasOwn(setupState, key)) {
+      return setupState[key]
     }
     const getter = publicProperty[key] // 通过不同的策略访问对应的方法
     if (getter) {
@@ -59,13 +62,15 @@ const handler = {
     }
   },
   set(target, key, value) {
-    const { data, props } = target
+    const { data, props, setupState } = target
     // proxy.name -> data.name
     if (data && hasOwn(data, key)) {
       data[key] = value
     } else if (props && hasOwn(props, key)) {
       console.warn('props are readonly')
       return false
+    } else if (setupState && hasOwn(setupState, key)) {
+      setupState[key] = value
     }
     return true
   }
@@ -80,12 +85,25 @@ export function setupComponent(instance) {
   // 赋值代理对象
   instance.proxy = new Proxy(instance, handler)
 
-  const { data, render } = vNode.type
-  instance.render = render
+  const { data = () => {}, render, setup } = vNode.type
+
+  if (setup) {
+    const setupContext = {}
+    const setupResult = setup(instance.props, setupContext)
+
+    if (isFunction(setupResult)) {
+      instance.render = setupResult
+    } else {
+      instance.setupState = proxyRefs(setupResult) // 脱ref
+    }
+  }
   if (data && !isFunction(data)) {
     console.warn('data option must be a function')
   } else if (isFunction(data)) {
     // data中可以拿到props
-    instance.data = reactive(data())
+    instance.data = reactive(data.call(instance.proxy))
+  }
+  if (!instance.render) {
+    instance.render = render
   }
 }
