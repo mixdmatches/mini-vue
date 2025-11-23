@@ -22,7 +22,8 @@ export function createVNode(type, props, children?) {
     children,
     key: props?.key,
     el: null,
-    shapeFlag
+    shapeFlag,
+    ref: props && props.ref
   }
   if (children) {
     // h('h1',[h('a','链接1'),h('a','链接2')])

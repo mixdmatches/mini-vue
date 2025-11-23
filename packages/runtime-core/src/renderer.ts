@@ -1,5 +1,11 @@
-import { hasOwn, isSameVNode, ShapeFlags } from '@mini-vue/shared'
-import { Fragment, reactive, ReactiveEffect, Text } from '@mini-vue/runtime-dom'
+import { hasOwn, isRef, isSameVNode, ShapeFlags } from '@mini-vue/shared'
+import {
+  Fragment,
+  invokeArray,
+  reactive,
+  ReactiveEffect,
+  Text
+} from '@mini-vue/runtime-dom'
 import getSequence from 'packages/runtime-core/src/seq'
 import { queueJob } from 'packages/runtime-core/src/scheduler'
 import {
@@ -270,22 +276,35 @@ export function createRenderer(renderOptions) {
   const setupRenderEffect = (instance, container, anchor) => {
     const { render } = instance
     const componentUpdateFn = () => {
+      const { bm, m } = instance
       // 区分组件是第一次还是之后的
       if (!instance.isMounted) {
+        if (bm) {
+          invokeArray(bm)
+        }
         const subTree = render.call(instance.proxy, instance.proxy)
         patch(null, subTree, container, anchor)
         instance.isMounted = true
         instance.subTree = subTree
+        if (m) {
+          invokeArray(m)
+        }
       } else {
         // 基于状态的组件更新
-        const { next } = instance
+        const { next, bu, u } = instance
         if (next) {
           // 更新属性和插槽
           updateComponentPreRender(instance, next)
         }
+        if (bu) {
+          invokeArray(bu)
+        }
         const subTree = render.call(instance.proxy, instance.proxy)
         patch(instance.subTree, subTree, container, anchor)
         instance.subTree = subTree
+        if (u) {
+          invokeArray(u)
+        }
       }
     }
     const effect = new ReactiveEffect(componentUpdateFn, () => queueJob(update))
@@ -389,7 +408,7 @@ export function createRenderer(renderOptions) {
       n1 = null
     }
 
-    const { type, shapeFlag } = n2
+    const { type, shapeFlag, ref } = n2
     switch (type) {
       case Text:
         // 对文本节点处理
@@ -405,6 +424,19 @@ export function createRenderer(renderOptions) {
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
           processComponent(n1, n2, container, anchor)
         }
+    }
+    if (ref !== null) {
+      setRef(ref, n2)
+    }
+  }
+
+  function setRef(rawRef, vNode) {
+    let value =
+      vNode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT
+        ? vNode.component.expose || vNode.component.proxy
+        : vNode.el
+    if (isRef(rawRef)) {
+      rawRef.value = value
     }
   }
 
